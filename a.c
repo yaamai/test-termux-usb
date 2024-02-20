@@ -10,9 +10,11 @@
 
 #include <fido.h>
 #include <fido/credman.h>
+#include <hidapi/hidapi_libusb.h>
 
 #include "sk-api.h"
 
+#define SK_DEBUG 1
 #ifdef SK_DEBUG
 #define SSH_FIDO_INIT_ARG	FIDO_DEBUG
 #else
@@ -105,11 +107,77 @@ struct sk_usbhid {
 	char *path;
 };
 
+struct hidapi_context {
+	void *handle;
+	size_t report_in_len;
+	size_t report_out_len;
+};
+
+void *fido_termux_open(const char *path) {
+  skdebug(__func__, "opening security key %s with hidapi-libusb", path);
+  struct hidapi_context *ctx;
+
+	if ((ctx = calloc(1, sizeof(*ctx))) == NULL) {
+		return (NULL);
+	}
+
+	if ((ctx->handle = hid_open(0x18d1, 0x9470, NULL)) == NULL) {
+		free(ctx);
+		return (NULL);
+	}
+
+	ctx->report_in_len = ctx->report_out_len = CTAP_MAX_REPORT_LEN;
+
+	return ctx;
+}
+
+void fido_termux_close(void *handle) {
+  skdebug(__func__, "closing %x", handle);
+
+	struct hidapi_context *ctx = handle;
+
+	hid_close(ctx->handle);
+	free(ctx);
+}
+
+int fido_termux_read(void *handle, unsigned char *buf, size_t len, int ms) {
+	struct hidapi_context *ctx = handle;
+
+	if (len != ctx->report_in_len) {
+		skdebug(__func__, "len %zu", len);
+		return -1;
+	}
+
+	return hid_read_timeout(ctx->handle, buf, len, ms);
+  return 0;
+}
+
+int fido_termux_write(void *handle, const unsigned char *buf, size_t len) {
+	struct hidapi_context *ctx = handle;
+
+	if (len != ctx->report_out_len + 1) {
+		skdebug(__func__, "len %zu", len);
+		return -1;
+	}
+
+	return hid_write(ctx->handle, buf, len);
+}
+
+
 static struct sk_usbhid *
 sk_open(const char *path)
 {
 	struct sk_usbhid *sk;
 	int r;
+
+  hid_init();
+
+  fido_dev_io_t io = {
+		&fido_termux_open,
+		&fido_termux_close,
+		&fido_termux_read,
+		&fido_termux_write,
+	};
 
 	if (path == NULL) {
 		skdebug(__func__, "path == NULL");
@@ -130,6 +198,9 @@ sk_open(const char *path)
 		free(sk);
 		return NULL;
 	}
+
+  fido_dev_set_io_functions(sk->dev, &io);
+
 	if ((r = fido_dev_open(sk->dev, sk->path)) != FIDO_OK) {
 		skdebug(__func__, "fido_dev_open %s failed: %s", sk->path,
 		    fido_strerr(r));
