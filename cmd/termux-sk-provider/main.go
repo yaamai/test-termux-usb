@@ -1,5 +1,7 @@
 package main
 
+import "log"
+
 //#include <stddef.h>
 //#include <stdint.h>
 //typedef struct sk_option_s {
@@ -17,12 +19,42 @@ package main
 //	uint8_t *attestation_cert;
 //	size_t attestation_cert_len;
 //} sk_enroll_response;
-
+//typedef struct sk_sign_response_s {
+//	uint8_t flags;
+//	uint32_t counter;
+//	uint8_t *sig_r;
+//	size_t sig_r_len;
+//	uint8_t *sig_s;
+//	size_t sig_s_len;
+//} sk_sign_response;
+//typedef struct sk_resident_key_s {
+//	uint32_t alg;
+//	size_t slot;
+//	char *application;
+//	struct sk_enroll_response_s key;
+//} sk_resident_key;
 import "C"
 
-//export ssh_sk_enroll
-func ssh_sk_enroll(alg C.int, challenge *C.uint8_t, challenge_len C.size_t, application *C.char, flags C.uint8_t, pin *C.char, opts *C.sk_option, enroll_response *C.sk_enroll_response) int {
+//export sk_api_version
+func sk_api_version() C.uint32_t {
+  return 0x000a0000
+}
+
+//export sk_enroll
+func sk_enroll(alg C.int, challenge *C.uint8_t, challenge_len C.size_t, application *C.char, flags C.uint8_t, pin *C.char, opts **C.sk_option, enroll_response **C.sk_enroll_response) int {
+  log.Println("sk_enroll", alg, pin, flags, C.GoString(application))
+  return 0
 } 
+
+//export sk_sign
+func sk_sign(alg C.int, message *C.uint8_t, message_len C.size_t, application *C.char, key_handle *C.uint8_t, key_handle_len C.size_t, flags C.uint8_t, pin *C.char, opts **C.sk_option, sign_response **C.sk_sign_response) int {
+  return 0
+}
+
+//export sk_load_resident_keys
+func sk_load_resident_keys(pin *C.char, opts **C.sk_option, rks ***C.sk_resident_key, nrks *C.size_t) int {
+  return 0
+}
 
 func main() {}
     
