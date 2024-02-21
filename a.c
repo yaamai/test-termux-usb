@@ -809,11 +809,9 @@ sk_enroll(uint32_t alg, const uint8_t *challenge, size_t challenge_len,
 		goto out; /* error already logged */
 
 	switch(alg) {
-#ifdef WITH_OPENSSL
 	case SSH_SK_ECDSA:
 		cose_alg = COSE_ES256;
 		break;
-#endif /* WITH_OPENSSL */
 	case SSH_SK_ED25519:
 		cose_alg = COSE_EDDSA;
 		break;
