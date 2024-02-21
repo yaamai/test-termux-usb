@@ -10,11 +10,11 @@
 
 #include <fido.h>
 #include <fido/credman.h>
-#include <hidapi/hidapi_libusb.h>
 
+#include "utils.h"
 #include "sk-api.h"
+#include "termux-io.h"
 
-#define SK_DEBUG 1
 #ifdef SK_DEBUG
 #define SSH_FIDO_INIT_ARG	FIDO_DEBUG
 #else
@@ -85,84 +85,10 @@ recallocarray(void *ptr, size_t oldnmemb, size_t newnmemb, size_t size)
 	return newptr;
 }
 
-static void
-skdebug(const char *func, const char *fmt, ...)
-{
-#if defined(SK_DEBUG)
-	va_list ap;
-
-	va_start(ap, fmt);
-	fprintf(stderr, "%s: ", func);
-	vfprintf(stderr, fmt, ap);
-	fputc('\n', stderr);
-	va_end(ap);
-#else
-	(void)func; /* XXX */
-	(void)fmt; /* XXX */
-#endif
-}
-
 struct sk_usbhid {
 	fido_dev_t *dev;
 	char *path;
 };
-
-struct hidapi_context {
-	void *handle;
-	size_t report_in_len;
-	size_t report_out_len;
-};
-
-void *fido_termux_open(const char *path) {
-  skdebug(__func__, "opening security key %s with hidapi-libusb", path);
-  struct hidapi_context *ctx;
-
-	if ((ctx = calloc(1, sizeof(*ctx))) == NULL) {
-		return (NULL);
-	}
-
-	if ((ctx->handle = hid_open(0x18d1, 0x9470, NULL)) == NULL) {
-		free(ctx);
-		return (NULL);
-	}
-
-	ctx->report_in_len = ctx->report_out_len = CTAP_MAX_REPORT_LEN;
-
-	return ctx;
-}
-
-void fido_termux_close(void *handle) {
-  skdebug(__func__, "closing %x", handle);
-
-	struct hidapi_context *ctx = handle;
-
-	hid_close(ctx->handle);
-	free(ctx);
-}
-
-int fido_termux_read(void *handle, unsigned char *buf, size_t len, int ms) {
-	struct hidapi_context *ctx = handle;
-
-	if (len != ctx->report_in_len) {
-		skdebug(__func__, "len %zu", len);
-		return -1;
-	}
-
-	return hid_read_timeout(ctx->handle, buf, len, ms);
-  return 0;
-}
-
-int fido_termux_write(void *handle, const unsigned char *buf, size_t len) {
-	struct hidapi_context *ctx = handle;
-
-	if (len != ctx->report_out_len + 1) {
-		skdebug(__func__, "len %zu", len);
-		return -1;
-	}
-
-	return hid_write(ctx->handle, buf, len);
-}
-
 
 static struct sk_usbhid *
 sk_open(const char *path)
