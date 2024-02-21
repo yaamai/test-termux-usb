@@ -241,7 +241,7 @@ pack_public_key_ecdsa(const fido_cred_t *cred,
 		skdebug(__func__, "BN_bin2bn failed");
 		goto out;
 	}
-	if (EC_POINT_get_affine_coordinates(g, q, x, y, NULL) != 1) {
+	if (EC_POINT_set_affine_coordinates_GFp(g, q, x, y, NULL) != 1) {
 		skdebug(__func__, "EC_POINT_set_affine_coordinates_GFp failed");
 		goto out;
 	}
@@ -797,13 +797,13 @@ sk_enroll(uint32_t alg, const uint8_t *challenge, size_t challenge_len,
 		goto out;
 	}
 	if ((flags & (SSH_SK_RESIDENT_KEY|SSH_SK_USER_VERIFICATION_REQD)) != 0) {
-#if !defined(HAVE_FIDO_DEV_SUPPORTS_CRED_PROT) || \
-    !defined(HAVE_FIDO_CRED_SET_PROT)
-		skdebug(__func__, "libfido2 version does not support a feature required for this operation. Please upgrade to >=1.5.0");
-		ret = SSH_SK_ERR_UNSUPPORTED;
-		goto out;
-		credprot = 0; (void)credprot; /* avoid warning */
-#endif
+// #if !defined(HAVE_FIDO_DEV_SUPPORTS_CRED_PROT) || \
+//     !defined(HAVE_FIDO_CRED_SET_PROT)
+// 		skdebug(__func__, "libfido2 version does not support a feature required for this operation. Please upgrade to >=1.5.0");
+// 		ret = SSH_SK_ERR_UNSUPPORTED;
+// 		goto out;
+// 		credprot = 0; (void)credprot; /* avoid warning */
+// #endif
 		if (!fido_dev_supports_cred_prot(sk->dev)) {
 			skdebug(__func__, "%s does not support credprot, "
 			    "refusing to create unprotected "

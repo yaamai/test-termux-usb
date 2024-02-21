@@ -185,13 +185,8 @@ void *fido_termux_open(const char *path) {
   int fd = termux_read_fd(ctx);
   skdebug(__func__, "usb fd = %d", fd);
 
-  libusb_context *context;
-  libusb_init(&context)
-
-  hid_device *dev = NULL;
-  dev = new_hid_device();
-
-  libusb_wrap_sys_device(context, (intptr_t) fd, &dev->handle));
+  libusb_set_option(NULL, LIBUSB_OPTION_NO_DEVICE_DISCOVERY);
+  ctx->handle = hid_libusb_wrap_sys_device((intptr_t)fd, -1);
   // device = libusb_get_device(handle);
   // res = libusb_open(usb_dev, &dev->device_handle);
 	// 					if (res < 0) {
@@ -205,7 +200,7 @@ void *fido_termux_open(const char *path) {
   // char aaa[128];
   // sprintf(aaa, "/proc/self/fd/%d", fd);
 
-	if ((ctx->handle = hid_open_path(aaa)) == NULL) {
+	if (ctx->handle == NULL) {
     skdebug(__func__, "failed to hid_open_path %x", ctx->handle);
 		free(ctx);
 		return (NULL);

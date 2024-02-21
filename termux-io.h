@@ -10,7 +10,11 @@
 #include <sys/un.h>
 #include <fcntl.h>
 
-#include <hidapi/hidapi_libusb.h>
+// #include <hidapi/hidapi_libusb.h>
+#define DEBUG_PRINTF 1
+// #include "hidapi.h"
+#include "hidapi_libusb.h"
+#include <libusb.h>
 #include <fido.h>
 
 #include "utils.h"
