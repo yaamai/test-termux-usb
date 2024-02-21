@@ -24,7 +24,7 @@ void generate_uuid(char* str) {
             arc4random(), arc4random(), arc4random());
 }
 
-_Noreturn void exec_am_broadcast(int argc, const char** argv,
+_Noreturn void exec_am_broadcast(const char* path,
                                  char* input_address_string,
                                  char* output_address_string)
 {
@@ -34,8 +34,8 @@ _Noreturn void exec_am_broadcast(int argc, const char** argv,
     // Close stdin:
     //close(STDIN_FILENO);
 
-    int const extra_args = 15; // Including ending NULL.
-    char** child_argv = malloc((sizeof(char*)) * (argc + extra_args));
+    int const extra_args = 23; // Including ending NULL.
+    char** child_argv = malloc((sizeof(char*)) * (extra_args+1));
 
     child_argv[0] = "am";
     child_argv[1] = "broadcast";
@@ -52,13 +52,21 @@ _Noreturn void exec_am_broadcast(int argc, const char** argv,
     child_argv[11] = input_address_string;
     child_argv[12] = "--es";
     child_argv[13] = "api_method";
-    child_argv[14] = argv[1];
+    child_argv[14] = "Usb";
+    child_argv[15] = "-a";
+    child_argv[16] = "open";
+    child_argv[17] = "--es";
+    child_argv[18] = "device";
+    child_argv[19] = path;
+    child_argv[20] = "--ez";
+    child_argv[21] = "request";
+    child_argv[22] = "true";
 
     // Copy the remaining arguments -2 for first binary and second api name:
-    memcpy(child_argv + extra_args, argv + 2, (argc-1) * sizeof(char*));
+    // memcpy(child_argv + extra_args, argv + 2, (argc-1) * sizeof(char*));
 
     // End with NULL:
-    child_argv[argc + extra_args - 1] = NULL;
+    child_argv[extra_args] = NULL;
 
     // Use an a executable taking care of PATH and LD_LIBRARY_PATH:
     execv(PREFIX "/bin/am", child_argv);
@@ -122,9 +130,7 @@ int termux_open_device(struct hidapi_context *ctx, const char* path) {
         perror("fork()");
         return -1;
     } else if (fork_result == 0) {
-        const char* argv[] = {"aa", "Usb", "-a", "open", "--es", "device", path, "--ez", "request", "true"};
-        skdebug(__func__, "building am args = %d %d", sizeof(argv), sizeof(char*));
-        exec_am_broadcast(sizeof(argv)/sizeof(char*), argv, ctx->input_addr_str, ctx->output_addr_str);
+        exec_am_broadcast(path, ctx->input_addr_str, ctx->output_addr_str);
     }
 }
 
@@ -150,7 +156,6 @@ int termux_read_fd(struct hidapi_context *ctx) {
         if (cmsg && cmsg->cmsg_len == CMSG_LEN(sizeof(int))) {
             if (cmsg->cmsg_type == SCM_RIGHTS) {
                 fd = *((int *) CMSG_DATA(cmsg));
-                skdebug(__func__, "receive fd!");
             }
         }
         // A file descriptor must be accompanied by a non-empty message,
@@ -177,9 +182,31 @@ void *fido_termux_open(const char *path) {
   skdebug(__func__, "prepare termux api socket");
   termux_open_device(ctx, path);
   skdebug(__func__, "requested termux usb fd");
-  termux_read_fd(ctx);
+  int fd = termux_read_fd(ctx);
+  skdebug(__func__, "usb fd = %d", fd);
 
-	if ((ctx->handle = hid_open(0x18d1, 0x9470, NULL)) == NULL) {
+  libusb_context *context;
+  libusb_init(&context)
+
+  hid_device *dev = NULL;
+  dev = new_hid_device();
+
+  libusb_wrap_sys_device(context, (intptr_t) fd, &dev->handle));
+  // device = libusb_get_device(handle);
+  // res = libusb_open(usb_dev, &dev->device_handle);
+	// 					if (res < 0) {
+	// 						LOG("can't open device\n");
+	// 						break;
+	// 					}
+	// good_open = hidapi_initialize_device(dev, intf_desc, conf_desc);
+	// if (!good_open)
+	// 	libusb_close(dev->device_handle);
+
+  // char aaa[128];
+  // sprintf(aaa, "/proc/self/fd/%d", fd);
+
+	if ((ctx->handle = hid_open_path(aaa)) == NULL) {
+    skdebug(__func__, "failed to hid_open_path %x", ctx->handle);
 		free(ctx);
 		return (NULL);
 	}
