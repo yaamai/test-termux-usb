@@ -10,7 +10,6 @@
 
 #include <fido.h>
 #include <fido/credman.h>
-#include <fido/types.h>
 
 #include "utils.h"
 #include "sk-api.h"
@@ -351,7 +350,6 @@ check_sk_options(fido_dev_t *dev, const char *opt, int *ret)
 	value = fido_cbor_info_options_value_ptr(info);
 	len = fido_cbor_info_options_len(info);
 	for (i = 0; i < len; i++) {
-    skdebug(__func__, "%s=%s", name[i], value);
 		if (!strcmp(name[i], opt)) {
 			*ret = value[i];
 			break;
@@ -522,45 +520,16 @@ pack_sig(uint32_t  alg, fido_assert_t *assert,
     struct sk_sign_response *response)
 {
 	switch(alg) {
+#ifdef WITH_OPENSSL
 	case SSH_SK_ECDSA:
 		return pack_sig_ecdsa(assert, response);
+#endif /* WITH_OPENSSL */
 	case SSH_SK_ED25519:
 		return pack_sig_ed25519(assert, response);
 	default:
 		return -1;
 	}
 }
-
-#define PACKED_TYPE(type, def)	\
-	typedef def __attribute__ ((__packed__)) type;
-
-PACKED_TYPE(a_fido_ctap_info_t,
-/* defined in section 8.1.9.1.3 (CTAPHID_INIT) of the fido2 ctap spec */
-struct a_fido_ctap_info {
-	uint64_t nonce;    /* echoed nonce */
-	uint32_t cid;      /* channel id */
-	uint8_t  protocol; /* ctaphid protocol id */
-	uint8_t  major;    /* major version number */
-	uint8_t  minor;    /* minor version number */
-	uint8_t  build;    /* build version number */
-	uint8_t  flags;    /* capabilities flags; see FIDO_CAP_* */
-})
-
-typedef struct a_fido_dev {
-	uint64_t              nonce;      /* issued nonce */
-	a_fido_ctap_info_t      attr;       /* device attributes */
-	uint32_t              cid;        /* assigned channel id */
-	char                 *path;       /* device path */
-	void                 *io_handle;  /* abstract i/o handle */
-	fido_dev_io_t         io;         /* i/o functions */
-	bool                  io_own;     /* device has own io/transport */
-	size_t                rx_len;     /* length of HID input reports */
-	size_t                tx_len;     /* length of HID output reports */
-	int                   flags;      /* internal flags; see FIDO_DEV_* */
-	fido_dev_transport_t  transport;  /* transport functions */
-	uint64_t	      maxmsgsize; /* max message size */
-	int		      timeout_ms; /* read timeout in ms */
-} a_fido_dev_t;
 
 static int
 read_rks(struct sk_usbhid *sk, const char *pin,
@@ -590,12 +559,6 @@ read_rks(struct sk_usbhid *sk, const char *pin,
 		goto out;
 	}
 
-#define FIDO_DEV_CREDMAN	0x0008
-  skdebug(__func__, "device flags %x", ((a_fido_dev_t*)sk->dev)->flags);
-  ((a_fido_dev_t*)sk->dev)->flags ^= CTAP_CBOR_CRED_MGMT_PRE;
-  ((a_fido_dev_t*)sk->dev)->flags |= FIDO_DEV_CREDMAN;
-  skdebug(__func__, "device flags %x", ((a_fido_dev_t*)sk->dev)->flags);
-
 	if ((r = fido_credman_get_dev_metadata(sk->dev, metadata, pin)) != 0) {
 		if (r == FIDO_ERR_INVALID_COMMAND) {
 			skdebug(__func__, "device %s does not support "
@@ -605,8 +568,8 @@ read_rks(struct sk_usbhid *sk, const char *pin,
 		}
 		skdebug(__func__, "get metadata for %s failed: %s",
 		    sk->path, fido_strerr(r));
-		// ret = fidoerr_to_skerr(r);
-		// goto out;
+		ret = fidoerr_to_skerr(r);
+		goto out;
 	}
 	skdebug(__func__, "existing %llu, remaining %llu",
 	    (unsigned long long)fido_credman_rk_existing(metadata),
@@ -618,7 +581,7 @@ read_rks(struct sk_usbhid *sk, const char *pin,
 	if ((r = fido_credman_get_dev_rp(sk->dev, rp, pin)) != 0) {
 		skdebug(__func__, "get RPs for %s failed: %s",
 		    sk->path, fido_strerr(r));
-		//goto out;
+		goto out;
 	}
 	nrp = fido_credman_rp_count(rp);
 	skdebug(__func__, "Device %s has resident keys for %zu RPs",
