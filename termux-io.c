@@ -24,6 +24,170 @@ void generate_uuid(char* str) {
             arc4random(), arc4random(), arc4random());
 }
 
+typedef struct termux_api_client_s {
+  char input_addr[100];  // This program reads from it.
+  char output_addr[100]; // This program writes to it.
+  int input_server_socket;
+  int output_server_socket;
+  int fd;
+  char buffer[1024];
+} termux_api_client_t;
+  
+
+int make_am_base_argv(char** argv, size_t buflen, size_t* write, const char* input_addr, const char* output_addr, const char* api, const char* action) {
+  char* base[] = {
+    "am", "broadcast", "--user", "0", "-n", "com.termux.api/.TermuxApiReceiver",
+    "--es", "socket_input", output_addr,
+    "--es", "socket_output", input_addr,
+    "--es", "api_method", api,
+    "-a", action};
+
+  size_t len = sizeof(base)/sizeof(char*);
+  if (buflen <= len) return -1;
+
+  memcpy(argv, base, sizeof(base));
+  *write += sizeof(base)/sizeof(char*);
+
+  return 0;
+}
+
+void execv_am_cmd(char** argv) {
+  pid_t fork_result = fork();
+
+  if (fork_result == -1) {
+      perror("fork()");
+      return -1;
+  } else if (fork_result == 0) {
+    execv(PREFIX "/bin/am", argv);
+    perror("execv(\"" PREFIX "/bin/am\")");
+    exit(1);
+  }
+
+}
+
+int prepare_sockets(termux_api_client_t* client) {
+
+    generate_uuid(client->input_addr);
+    generate_uuid(client->output_addr);
+
+    struct sockaddr_un input_addr = { .sun_family = AF_UNIX };
+    struct sockaddr_un output_addr = { .sun_family = AF_UNIX };
+
+    // Leave struct sockaddr_un.sun_path[0] as 0 and use the UUID
+    // string as abstract linux namespace:
+    strncpy(&input_addr.sun_path[1], client->input_addr, strlen(client->input_addr));
+    strncpy(&output_addr.sun_path[1], client->output_addr, strlen(client->output_addr));
+
+    client->input_server_socket = socket(AF_UNIX, SOCK_STREAM|SOCK_CLOEXEC, 0);
+    if (client->input_server_socket == -1) {
+        perror("socket()");
+        return -1;
+    }
+    client->output_server_socket = socket(AF_UNIX, SOCK_STREAM|SOCK_CLOEXEC, 0);
+    if (client->output_server_socket == -1) {
+        perror("socket()");
+        return -1;
+    }
+
+    int ret;
+    ret = bind(client->input_server_socket, (struct sockaddr*) &input_addr,
+               sizeof(sa_family_t) + strlen(client->input_addr) + 1);
+    if (ret == -1) {
+        perror("bind(input)");
+        return ret;
+    }
+
+    ret = bind(client->output_server_socket, (struct sockaddr*) &output_addr,
+               sizeof(sa_family_t) + strlen(client->output_addr) + 1);
+    if (ret == -1) {
+        perror("bind(output)");
+        return ret;
+    }
+
+    if (listen(client->input_server_socket, 1) == -1) {
+        perror("listen()");
+        return -1;
+    }
+
+    if (listen(client->output_server_socket, 1) == -1) {
+        perror("listen()");
+        return -1;
+    }
+    return 0;
+}
+
+int termux_recv(termux_api_client_t* client) {
+    struct sockaddr_un remote_addr;
+    socklen_t addrlen = sizeof(remote_addr);
+    int input_client_socket = accept(client->input_server_socket,
+                                     (struct sockaddr*) &remote_addr,
+                                     &addrlen);
+
+    ssize_t len;
+    size_t write_pos = 0;
+    char buffer[1024];
+    char cbuf[256];
+    client->fd = -1;  // An optional file descriptor received through the socket
+                      //
+    struct iovec io = { .iov_base = buffer, .iov_len = sizeof(buffer) };
+    struct msghdr msg = { 0 };
+    msg.msg_iov = &io;
+    msg.msg_iovlen = 1;
+    msg.msg_control = cbuf;
+    msg.msg_controllen = sizeof(cbuf);
+
+    while ((len = recvmsg(input_client_socket, &msg, 0)) > 0) {
+        struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg);
+        if (cmsg && cmsg->cmsg_len == CMSG_LEN(sizeof(int))) {
+            if (cmsg->cmsg_type == SCM_RIGHTS) {
+                client->fd = *((int *) CMSG_DATA(cmsg));
+            }
+        }
+
+        // A file descriptor must be accompanied by a non-empty message,
+        // so we use "@" when we don't want any output.
+        if (client->fd != -1 && len == 1 && buffer[0] == '@') { len = 0; }
+
+        if (write_pos + len < sizeof(client->buffer))  {
+          memcpy(client->buffer+write_pos, buffer, len);
+          write_pos += len;
+        }
+        msg.msg_controllen = sizeof(cbuf);
+    }
+    if (len < 0) return -1;
+    return 0;
+}
+
+int list_termux_usb_devices() {
+  int rc = 0;
+  termux_api_client_t* client;
+
+	if ((client = calloc(1, sizeof(*client))) == NULL) {
+		return -1;
+	}
+
+  if ((rc = prepare_sockets(client)) < 0) {
+    return rc;
+  }
+
+  char** argv = malloc((sizeof(char*)) * 64);
+  size_t argc = 0;
+  if ((rc = make_am_base_argv(argv, 64, &argc, client->input_addr, client->output_addr, "Usb", "list")) < 0) {
+    return rc;
+  }
+  argv[argc] = NULL;
+
+  execv_am_cmd(argv);
+  if ((rc = termux_recv(client)) < 0) {
+    return rc;
+  }
+
+  skdebug(__func__, "%s", client->buffer);
+  return 0;
+}
+
+
+
 _Noreturn void exec_am_broadcast(const char* path,
                                  char* input_address_string,
                                  char* output_address_string)
@@ -75,55 +239,6 @@ _Noreturn void exec_am_broadcast(const char* path,
     exit(1);
 }
 
-int prepare_sockets(struct hidapi_context *ctx) {
-
-    generate_uuid(ctx->input_addr_str);
-    generate_uuid(ctx->output_addr_str);
-
-    struct sockaddr_un input_addr = { .sun_family = AF_UNIX };
-    struct sockaddr_un output_addr = { .sun_family = AF_UNIX };
-    // Leave struct sockaddr_un.sun_path[0] as 0 and use the UUID
-    // string as abstract linux namespace:
-    strncpy(&input_addr.sun_path[1], ctx->input_addr_str, strlen(ctx->input_addr_str));
-    strncpy(&output_addr.sun_path[1], ctx->output_addr_str, strlen(ctx->output_addr_str));
-
-    ctx->input_server_socket = socket(AF_UNIX, SOCK_STREAM|SOCK_CLOEXEC, 0);
-    if (ctx->input_server_socket == -1) {
-        perror("socket()");
-        return -1;
-    }
-    ctx->output_server_socket = socket(AF_UNIX, SOCK_STREAM|SOCK_CLOEXEC, 0);
-    if (ctx->output_server_socket == -1) {
-        perror("socket()");
-        return -1;
-    }
-
-    int ret;
-    ret = bind(ctx->input_server_socket, (struct sockaddr*) &input_addr,
-               sizeof(sa_family_t) + strlen(ctx->input_addr_str) + 1);
-    if (ret == -1) {
-        perror("bind(input)");
-        return ret;
-    }
-
-    ret = bind(ctx->output_server_socket, (struct sockaddr*) &output_addr,
-               sizeof(sa_family_t) + strlen(ctx->output_addr_str) + 1);
-    if (ret == -1) {
-        perror("bind(output)");
-        return ret;
-    }
-
-    if (listen(ctx->input_server_socket, 1) == -1) {
-        perror("listen()");
-        return -1;
-    }
-
-    if (listen(ctx->output_server_socket, 1) == -1) {
-        perror("listen()");
-        return -1;
-    }
-}
-
 int termux_open_device(struct hidapi_context *ctx, const char* path) {
     pid_t fork_result = fork();
     if (fork_result == -1) {
@@ -135,37 +250,6 @@ int termux_open_device(struct hidapi_context *ctx, const char* path) {
 }
 
 int termux_read_fd(struct hidapi_context *ctx) {
-    struct sockaddr_un remote_addr;
-    socklen_t addrlen = sizeof(remote_addr);
-    int input_client_socket = accept(ctx->input_server_socket,
-                                     (struct sockaddr*) &remote_addr,
-                                     &addrlen);
-
-    ssize_t len;
-    char buffer[1024];
-    char cbuf[256];
-    struct iovec io = { .iov_base = buffer, .iov_len = sizeof(buffer) };
-    struct msghdr msg = { 0 };
-    int fd = -1;  // An optional file descriptor received through the socket
-    msg.msg_iov = &io;
-    msg.msg_iovlen = 1;
-    msg.msg_control = cbuf;
-    msg.msg_controllen = sizeof(cbuf);
-    while ((len = recvmsg(input_client_socket, &msg, 0)) > 0) {
-        struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg);
-        if (cmsg && cmsg->cmsg_len == CMSG_LEN(sizeof(int))) {
-            if (cmsg->cmsg_type == SCM_RIGHTS) {
-                fd = *((int *) CMSG_DATA(cmsg));
-            }
-        }
-        // A file descriptor must be accompanied by a non-empty message,
-        // so we use "@" when we don't want any output.
-        if (fd != -1 && len == 1 && buffer[0] == '@') { len = 0; }
-        write(STDOUT_FILENO, buffer, len);
-        msg.msg_controllen = sizeof(cbuf);
-    }
-    if (len < 0) perror("recvmsg()");
-    return fd;
 }
 
 

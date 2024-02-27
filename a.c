@@ -107,6 +107,8 @@ sk_open(const char *path)
 
 	if (path == NULL) {
 		skdebug(__func__, "path == NULL");
+    r = list_termux_usb_devices();
+    skdebug(__func__, "list=%d", r);
 		return NULL;
 	}
 	if ((sk = calloc(1, sizeof(*sk))) == NULL) {
@@ -745,7 +747,7 @@ sk_enroll(uint32_t alg, const uint8_t *challenge, size_t challenge_len,
 		skdebug(__func__, "unsupported key type %d", alg);
 		goto out;
 	}
-	if (device != NULL)
+	// if (device != NULL)
 		sk = sk_open(device);
 	// else
 	// 	sk = sk_probe(NULL, NULL, 0, 0);
