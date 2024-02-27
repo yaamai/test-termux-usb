@@ -18,6 +18,7 @@
 #include <fido.h>
 
 #include "utils.h"
+#include "termux.h"
 
 #ifndef PREFIX
 # define PREFIX "/data/data/com.termux/files/usr"

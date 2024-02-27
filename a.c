@@ -107,8 +107,6 @@ sk_open(const char *path)
 
 	if (path == NULL) {
 		skdebug(__func__, "path == NULL");
-    r = list_termux_usb_devices();
-    skdebug(__func__, "list=%d", r);
 		return NULL;
 	}
 	if ((sk = calloc(1, sizeof(*sk))) == NULL) {
@@ -138,6 +136,19 @@ sk_open(const char *path)
 		return NULL;
 	}
 	return sk;
+}
+
+static struct sk_usbhid *
+sk_probe(const char *application, const uint8_t *key_handle,
+    size_t key_handle_len, int probe_resident)
+{
+  int rc = 0;
+  char path[1024];
+  if ((rc = termux_get_first_usb_device_path(path, sizeof(path))) < 0) {
+    return NULL;
+  }
+
+  return sk_open(path);
 }
 
 static void
@@ -747,10 +758,10 @@ sk_enroll(uint32_t alg, const uint8_t *challenge, size_t challenge_len,
 		skdebug(__func__, "unsupported key type %d", alg);
 		goto out;
 	}
-	// if (device != NULL)
+	if (device != NULL)
 		sk = sk_open(device);
-	// else
-	// 	sk = sk_probe(NULL, NULL, 0, 0);
+	else
+	  sk = sk_probe(NULL, NULL, 0, 0);
 	if (sk == NULL) {
 		ret = SSH_SK_ERR_DEVICE_NOT_FOUND;
 		skdebug(__func__, "failed to find sk");
@@ -799,13 +810,13 @@ sk_enroll(uint32_t alg, const uint8_t *challenge, size_t challenge_len,
 		goto out;
 	}
 	if ((flags & (SSH_SK_RESIDENT_KEY|SSH_SK_USER_VERIFICATION_REQD)) != 0) {
-// #if !defined(HAVE_FIDO_DEV_SUPPORTS_CRED_PROT) || \
-//     !defined(HAVE_FIDO_CRED_SET_PROT)
-// 		skdebug(__func__, "libfido2 version does not support a feature required for this operation. Please upgrade to >=1.5.0");
-// 		ret = SSH_SK_ERR_UNSUPPORTED;
-// 		goto out;
-// 		credprot = 0; (void)credprot; /* avoid warning */
-// #endif
+#if !defined(HAVE_FIDO_DEV_SUPPORTS_CRED_PROT) || \
+    !defined(HAVE_FIDO_CRED_SET_PROT)
+		skdebug(__func__, "libfido2 version does not support a feature required for this operation. Please upgrade to >=1.5.0");
+		ret = SSH_SK_ERR_UNSUPPORTED;
+		goto out;
+		credprot = 0; (void)credprot; /* avoid warning */
+#endif
 		if (!fido_dev_supports_cred_prot(sk->dev)) {
 			skdebug(__func__, "%s does not support credprot, "
 			    "refusing to create unprotected "
@@ -934,10 +945,10 @@ sk_sign(uint32_t alg, const uint8_t *data, size_t datalen,
 		goto out; /* error already logged */
 	if (device != NULL)
 		sk = sk_open(device);
-	// else if (pin != NULL || (flags & SSH_SK_USER_VERIFICATION_REQD))
-	// 	sk = sk_probe(NULL, NULL, 0, 0);
-	// else
-	// 	sk = sk_probe(application, key_handle, key_handle_len, 0);
+	else if (pin != NULL || (flags & SSH_SK_USER_VERIFICATION_REQD))
+		sk = sk_probe(NULL, NULL, 0, 0);
+	else
+		sk = sk_probe(application, key_handle, key_handle_len, 0);
 	if (sk == NULL) {
 		ret = SSH_SK_ERR_DEVICE_NOT_FOUND;
 		skdebug(__func__, "failed to find sk");
@@ -1040,8 +1051,8 @@ sk_load_resident_keys(const char *pin, struct sk_option **options,
 		goto out; /* error already logged */
 	if (device != NULL)
 		sk = sk_open(device);
-	// else
-	// 	sk = sk_probe(NULL, NULL, 0, 1);
+	else
+	  sk = sk_probe(NULL, NULL, 0, 1);
 	if (sk == NULL) {
 		ret = SSH_SK_ERR_DEVICE_NOT_FOUND;
 		skdebug(__func__, "failed to find sk");
