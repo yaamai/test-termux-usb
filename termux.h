@@ -10,6 +10,7 @@
 #include <sys/un.h>
 #include <fcntl.h>
 #include "yyjson.h"
+#include "utils.h"
 
 typedef struct termux_api_client_s {
   char input_addr[100];  // This program reads from it.

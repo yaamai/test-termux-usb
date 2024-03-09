@@ -42,6 +42,8 @@ int execv_am_cmd(char** argv) {
     perror("execv(\"" PREFIX "/bin/am\")");
     exit(1);
   }
+
+  return 0;
 }
 
 int prepare_sockets(termux_api_client_t* client) {
