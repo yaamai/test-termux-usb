@@ -533,10 +533,8 @@ pack_sig(uint32_t  alg, fido_assert_t *assert,
     struct sk_sign_response *response)
 {
 	switch(alg) {
-#ifdef WITH_OPENSSL
 	case SSH_SK_ECDSA:
 		return pack_sig_ecdsa(assert, response);
-#endif /* WITH_OPENSSL */
 	case SSH_SK_ED25519:
 		return pack_sig_ed25519(assert, response);
 	default:
