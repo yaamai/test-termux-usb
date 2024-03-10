@@ -1,0 +1,85 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 83d27f12..3220ad78 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -70,6 +71,9 @@ if(NOT MSVC)
+ 	elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+ 		set(FIDO_CFLAGS "${FIDO_CFLAGS} -D_GNU_SOURCE")
+ 		set(FIDO_CFLAGS "${FIDO_CFLAGS} -D_DEFAULT_SOURCE")
++	elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
++		set(FIDO_CFLAGS "${FIDO_CFLAGS} -D_GNU_SOURCE")
++		set(FIDO_CFLAGS "${FIDO_CFLAGS} -D_DEFAULT_SOURCE")
+ 	elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR
+ 	    CMAKE_SYSTEM_NAME STREQUAL "MidnightBSD")
+ 		set(FIDO_CFLAGS "${FIDO_CFLAGS} -D__BSD_VISIBLE=1")
+@@ -110,6 +114,11 @@ check_symbol_exists(sysconf unistd.h HAVE_SYSCONF)
+ check_symbol_exists(timespecsub sys/time.h HAVE_TIMESPECSUB)
+ check_symbol_exists(timingsafe_bcmp string.h HAVE_TIMINGSAFE_BCMP)
+ 
++if(CMAKE_SYSTEM_NAME STREQUAL "Android")
++    set(HAVE_EXPLICIT_BZERO OFF)
++    add_definitions(-DCRYPTO_EXPLICIT_BZERO)
++endif()
++
+ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+ try_compile(HAVE_POSIX_IOCTL
+     "${CMAKE_CURRENT_BINARY_DIR}/posix_ioctl_check.o"
+@@ -229,6 +234,19 @@ else()
+ 				set(BASE_LIBRARIES ${BASE_LIBRARIES} rt)
+ 			endif()
+ 		endif()
++	elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
++		if(UDEV_ROOT_DIR)
++			list(PREPEND CMAKE_FIND_ROOT_PATH ${UDEV_ROOT_DIR})
++		endif()
++
++		find_path(UDEV_INCLUDE_DIR
++			NAMES "libudev.h")
++
++		find_library(UDEV_LIBRARY
++			NAMES libudev-zero.a libudev)
++
++		set(UDEV_INCLUDE_DIRS "${UDEV_INCLUDE_DIR}")
++		set(UDEV_LIBRARIES "udev")
+ 	else()
+ 		set(NFC_LINUX OFF)
+ 	endif()
+diff --git a/openbsd-compat/explicit_bzero.c b/openbsd-compat/explicit_bzero.c
+index ac64e69b..e86c5f06 100644
+--- a/openbsd-compat/explicit_bzero.c
++++ b/openbsd-compat/explicit_bzero.c
+@@ -7,7 +7,7 @@
+ 
+ #include "openbsd-compat.h"
+ 
+-#if !defined(HAVE_EXPLICIT_BZERO) && !defined(_WIN32)
++#if !defined(HAVE_EXPLICIT_BZERO) && !defined(_WIN32) && !defined(CRYPTO_EXPLICIT_BZERO)
+ 
+ #include <string.h>
+ 
+diff --git a/openbsd-compat/openbsd-compat.h b/openbsd-compat/openbsd-compat.h
+index 1518ff75..f484b967 100644
+--- a/openbsd-compat/openbsd-compat.h
++++ b/openbsd-compat/openbsd-compat.h
+@@ -62,7 +62,7 @@ char *strsep(char **, const char *);
+ void *recallocarray(void *, size_t, size_t, size_t);
+ #endif
+ 
+-#if !defined(HAVE_EXPLICIT_BZERO)
++#if !defined(HAVE_EXPLICIT_BZERO) || defined(CRYPTO_EXPLICIT_BZERO)
+ void explicit_bzero(void *, size_t);
+ #endif
+ 
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 44a87282..9ea423e9 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -71,6 +71,8 @@ elseif(APPLE)
+ 	list(APPEND FIDO_SOURCES hid_osx.c)
+ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+ 	list(APPEND FIDO_SOURCES hid_linux.c hid_unix.c)
++elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
++	list(APPEND FIDO_SOURCES hid_linux.c hid_unix.c)
+ elseif(CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
+ 	list(APPEND FIDO_SOURCES hid_netbsd.c hid_unix.c)
+ elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")

@@ -14,6 +14,7 @@
 #include "utils.h"
 #include "sk-api.h"
 #include "termux-io.h"
+#include "termux.h"
 
 #ifdef SK_DEBUG
 #define SSH_FIDO_INIT_ARG	FIDO_DEBUG
@@ -29,7 +30,7 @@ freezero(void *ptr, size_t sz)
 {
 	if (ptr == NULL)
 		return;
-	explicit_bzero(ptr, sz);
+	memset(ptr, 0, sz);
 	free(ptr);
 }
 
@@ -79,7 +80,7 @@ recallocarray(void *ptr, size_t oldnmemb, size_t newnmemb, size_t size)
 	} else
 		memcpy(newptr, ptr, newsize);
 
-	explicit_bzero(ptr, oldsize);
+	memset(ptr, 0, oldsize);
 	free(ptr);
 
 	return newptr;
