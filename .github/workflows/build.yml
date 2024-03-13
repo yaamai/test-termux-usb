@@ -6,13 +6,15 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/termux/package-builder:latest
+      options: --user 1001
     steps:
     - name: prepare termux-package build scripts
       run: |
-        ls
-        ls /home/builder
+        pwd && ls
+        pwd && ls /home/builder
         cd /home/builder
         git clone --depth=1 https://github.com/termux/termux-packages.git
+        pwd && ls /home/builder/termux-packages
     - name: checkout
       uses: actions/checkout@v3
       # with:
@@ -20,15 +22,16 @@ jobs:
       #   fetch-depth: 1
     - name: copy build definitions
       run: |
-        ls
-        ls /home/builder
+        pwd && ls
+        pwd && ls /home/builder
         for l in $(echo libcbor libfido2 hidapi-libusb libusb termux-skp); do
           cp -r $l /home/builder/termux-packages/packages/
         done
     - name: build packages
       run: |
-        ls
-        ls /home/builder
+        pwd && ls
+        pwd && ls /home/builder
+        export HOME=/home/builder
         cd /home/builder/termux-packages
         ./build-package.sh termux-skp
         ls output
