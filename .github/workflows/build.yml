@@ -1,0 +1,25 @@
+name: build
+on: push
+
+jobs:
+  build:
+    runs-on: ghcr.io/termux/package-builder:latest
+    steps:
+    - name: prepare termux-package build scripts
+      run: |
+        cd /home/builder
+        git clone --depth=1 https://github.com/termux/termux-packages.git
+    - name: checkout
+      uses: actions/checkout@v3
+      # with:
+      #   # path: /home/builder/termux-packages/packages
+      #   fetch-depth: 1
+    - name: copy build definitions
+      run: |
+        for l in $(echo libcbor libfido2 hidapi-libusb libusb termux-skp); do
+          cp -r $l /home/builder/termux-packages/packages/
+        done
+    - name: build packages
+      run: |
+        cd /home/builder/termux-packages
+        ./build-package.sh termux-skp
