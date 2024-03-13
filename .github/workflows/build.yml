@@ -9,6 +9,8 @@ jobs:
     steps:
     - name: prepare termux-package build scripts
       run: |
+        ls
+        ls /home/builder
         cd /home/builder
         git clone --depth=1 https://github.com/termux/termux-packages.git
     - name: checkout
@@ -18,11 +20,15 @@ jobs:
       #   fetch-depth: 1
     - name: copy build definitions
       run: |
+        ls
+        ls /home/builder
         for l in $(echo libcbor libfido2 hidapi-libusb libusb termux-skp); do
           cp -r $l /home/builder/termux-packages/packages/
         done
     - name: build packages
       run: |
+        ls
+        ls /home/builder
         cd /home/builder/termux-packages
         ./build-package.sh termux-skp
         ls output
