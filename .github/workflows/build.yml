@@ -3,7 +3,9 @@ on: push
 
 jobs:
   build:
-    runs-on: ghcr.io/termux/package-builder:latest
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/termux/package-builder:latest
     steps:
     - name: prepare termux-package build scripts
       run: |
