@@ -43,3 +43,25 @@ jobs:
       with:
         files: |
           /home/builder/termux-packages/output/*.deb
+
+    - name: build repository
+      run: |
+        pip3 install termux-apt-repo
+        ~/.local/bin/termux-apt-repo /home/builder/termux-packages/output/ repo/
+
+    - uses: actions/upload-pages-artifact@v1
+      with:
+        path: repo
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/deploy-pages@v1
+        id: deployment
