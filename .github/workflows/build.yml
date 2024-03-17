@@ -18,7 +18,7 @@ jobs:
         git clone --depth=1 https://github.com/termux/termux-packages.git
         pwd && ls /home/builder/termux-packages
     - name: checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       # with:
       #   # path: /home/builder/termux-packages/packages
       #   fetch-depth: 1
@@ -63,5 +63,5 @@ jobs:
       pages: write
       id-token: write
     steps:
-      - uses: actions/deploy-pages@v1
+      - uses: actions/deploy-pages@v4
         id: deployment
