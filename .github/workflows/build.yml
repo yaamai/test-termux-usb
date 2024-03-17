@@ -49,7 +49,7 @@ jobs:
         pip3 install termux-apt-repo
         ~/.local/bin/termux-apt-repo /home/builder/termux-packages/output/ repo/
 
-    - uses: actions/upload-pages-artifact@v4
+    - uses: actions/upload-pages-artifact@v3
       with:
         path: repo
 
