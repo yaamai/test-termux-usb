@@ -26,6 +26,7 @@ typedef struct termux_api_client_s {
 #endif
 
 int termux_open_usb_device(int* fd, const char* path);
+int termux_request_usb_device(int* fd, const char* path);
 int termux_get_first_usb_device_path(char* buffer, size_t buflen);
 
 #endif /* TERMUX_H */

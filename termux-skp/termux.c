@@ -195,6 +195,42 @@ int termux_get_first_usb_device_path(char* buffer, size_t buflen) {
   return 0;
 }
 
+int termux_request_usb_device(int* fd, const char* path) {
+  int rc = 0;
+  termux_api_client_t* client;
+
+	if ((client = calloc(1, sizeof(*client))) == NULL) {
+		return -1;
+	}
+
+  if ((rc = prepare_sockets(client)) < 0) {
+    return rc;
+  }
+
+  char** argv = malloc((sizeof(char*)) * 64);
+  size_t argc = 0;
+  if ((rc = make_am_base_argv(argv, 64, &argc, client->input_addr, client->output_addr, "Usb", "permission")) < 0) {
+    return rc;
+  }
+  argv[argc++] = "--es";
+  argv[argc++] = "device";
+  argv[argc++] = (char*)path;
+  argv[argc++] = "--ez";
+  argv[argc++] = "request";
+  argv[argc++] = "true";
+  argv[argc] = NULL;
+
+  execv_am_cmd(argv);
+  if ((rc = termux_recv(client)) < 0) {
+    return rc;
+  }
+
+  close(client->input_server_socket);
+  close(client->output_server_socket);
+  free(client);
+  return 0;
+}
+
 int termux_open_usb_device(int* fd, const char* path) {
   int rc = 0;
   termux_api_client_t* client;
@@ -215,9 +251,6 @@ int termux_open_usb_device(int* fd, const char* path) {
   argv[argc++] = "--es";
   argv[argc++] = "device";
   argv[argc++] = (char*)path;
-  argv[argc++] = "--ez";
-  argv[argc++] = "request";
-  argv[argc++] = "true";
   argv[argc] = NULL;
 
   execv_am_cmd(argv);

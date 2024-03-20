@@ -17,7 +17,17 @@ void *fido_termux_open(const char *path) {
 
   int fd = 0;
   int rc = 0;
+  rc = termux_request_usb_device(&fd, path);
+  if (rc != 0) {
+    skdebug(__func__, "failed to request usb device: %d", rc);
+    return NULL;
+  }
+
   rc = termux_open_usb_device(&fd, path);
+  if (rc != 0) {
+    skdebug(__func__, "failed to open usb device: %d", rc);
+    return NULL;
+  }
 
   libusb_set_option(NULL, LIBUSB_OPTION_NO_DEVICE_DISCOVERY);
   ctx->handle = hid_libusb_wrap_sys_device((intptr_t)fd, -1);
