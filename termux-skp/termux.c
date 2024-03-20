@@ -170,6 +170,11 @@ int termux_list_usb_devices(char* buffer, size_t buflen) {
 
   strncpy(buffer, client->buffer, buflen);
   skdebug(__func__, "enumerated usb device: %s", buffer);
+
+  close(client->input_server_socket);
+  close(client->output_server_socket);
+  free(client);
+
   return 0;
 }
 
@@ -221,5 +226,9 @@ int termux_open_usb_device(int* fd, const char* path) {
   }
 
   *fd = client->fd;
+
+  close(client->input_server_socket);
+  close(client->output_server_socket);
+  free(client);
   return 0;
 }
