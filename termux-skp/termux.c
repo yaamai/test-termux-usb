@@ -98,11 +98,15 @@ int prepare_sockets(termux_api_client_t* client) {
 }
 
 int termux_recv(termux_api_client_t* client) {
+
+    skdebug(__func__, "start receiving result: %s", client->input_addr);
     struct sockaddr_un remote_addr;
     socklen_t addrlen = sizeof(remote_addr);
     int input_client_socket = accept(client->input_server_socket,
                                      (struct sockaddr*) &remote_addr,
                                      &addrlen);
+
+    skdebug(__func__, "accept Termux:API connection");
 
     ssize_t len;
     size_t write_pos = 0;
@@ -118,6 +122,7 @@ int termux_recv(termux_api_client_t* client) {
     msg.msg_controllen = sizeof(cbuf);
 
     while ((len = recvmsg(input_client_socket, &msg, 0)) > 0) {
+        skdebug(__func__, "recvmsg: %d", len);
         struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg);
         if (cmsg && cmsg->cmsg_len == CMSG_LEN(sizeof(int))) {
             if (cmsg->cmsg_type == SCM_RIGHTS) {
