@@ -17,7 +17,6 @@
 #include <libusb.h>
 #include <fido.h>
 
-#include "utils.h"
 #include "termux.h"
 
 #ifndef PREFIX

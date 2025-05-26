@@ -1,11 +1,61 @@
---- a/sk-usbhid.c	2025-04-26 11:52:37.500314960 +0900
-+++ b/sk-usbhid.c	2025-04-26 12:05:15.257333071 +0900
-@@ -175,6 +175,15 @@ sk_open(const char *path)
+--- openssh-portable/sk-usbhid.c	2025-05-26 09:56:07.796244095 +0900
++++ sk-usbhid.c	2025-05-26 10:03:28.740244121 +0900
+@@ -17,6 +17,7 @@
+  */
+ 
+ #include "includes.h"
++#include "termux-io.h"
+ 
+ #ifdef ENABLE_SK_INTERNAL
+ 
+@@ -49,7 +50,6 @@
+ #include <openssl/ec.h>
+ #include <openssl/ecdsa.h>
+ #include <openssl/evp.h>
+-#include "openbsd-compat/openssl-compat.h"
+ #endif /* WITH_OPENSSL */
+ 
+ #include <fido.h>
+@@ -135,35 +135,6 @@ int sk_sign(uint32_t alg, const uint8_t
+ int sk_load_resident_keys(const char *pin, struct sk_option **options,
+     struct sk_resident_key ***rks, size_t *nrks);
+ 
+-static void skdebug(const char *func, const char *fmt, ...)
+-    __attribute__((__format__ (printf, 2, 3)));
+-
+-static void
+-skdebug(const char *func, const char *fmt, ...)
+-{
+-#if !defined(SK_STANDALONE)
+-	char *msg;
+-	va_list ap;
+-
+-	va_start(ap, fmt);
+-	xvasprintf(&msg, fmt, ap);
+-	va_end(ap);
+-	debug("%s: %s", func, msg);
+-	free(msg);
+-#elif defined(SK_DEBUG)
+-	va_list ap;
+-
+-	va_start(ap, fmt);
+-	fprintf(stderr, "%s: ", func);
+-	vfprintf(stderr, fmt, ap);
+-	fputc('\n', stderr);
+-	va_end(ap);
+-#else
+-	(void)func; /* XXX */
+-	(void)fmt; /* XXX */
+-#endif
+-}
+-
+ uint32_t
+ sk_api_version(void)
+ {
+@@ -176,6 +147,13 @@ sk_open(const char *path)
  	struct sk_usbhid *sk;
  	int r;
  
-+  hid_init();
-+
 +  fido_dev_io_t io = {
 +		&fido_termux_open,
 +		&fido_termux_close,
@@ -16,7 +66,7 @@
  	if (path == NULL) {
  		skdebug(__func__, "path == NULL");
  		return NULL;
-@@ -194,6 +203,9 @@ sk_open(const char *path)
+@@ -195,6 +173,9 @@ sk_open(const char *path)
  		free(sk);
  		return NULL;
  	}
@@ -26,7 +76,7 @@
  	if ((r = fido_dev_open(sk->dev, sk->path)) != FIDO_OK) {
  		skdebug(__func__, "fido_dev_open %s failed: %s", sk->path,
  		    fido_strerr(r));
-@@ -561,39 +573,13 @@ static struct sk_usbhid *
+@@ -562,39 +543,13 @@ static struct sk_usbhid *
  sk_probe(const char *application, const uint8_t *key_handle,
      size_t key_handle_len, int probe_resident)
  {
