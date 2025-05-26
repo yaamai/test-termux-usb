@@ -19,6 +19,8 @@ jobs:
         pwd && ls /home/builder/termux-packages
     - name: checkout
       uses: actions/checkout@v4
+      with:
+        submodules: true
       # with:
       #   # path: /home/builder/termux-packages/packages
       #   fetch-depth: 1

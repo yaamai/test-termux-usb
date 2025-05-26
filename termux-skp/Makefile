@@ -1,6 +1,5 @@
 build:
 	mkdir -p ssh
-	cp ./openssh-portable/sk-usbhid.c ssh/
 	cp ./openssh-portable/sk-api.h ssh/
 	cp ./openssh-portable/misc.h ssh/
 	cp ./openssh-portable/ssherr.h ssh/
@@ -8,8 +7,8 @@ build:
 	cp ./openssh-portable/openbsd-compat/freezero.c ssh/
 	# touch ssh/log.h
 
-	cp ssh/sk-usbhid.c .
-	patch -p1 -i termux.patch
+	cp ./openssh-portable/sk-usbhid.c .
+	patch -p1 -i termux.p
 	# touch xmalloc.h
 	# touch match.h
 	gcc \
@@ -22,7 +21,7 @@ build:
 		-D HAVE_FIDO_CRED_SET_CLIENTDATA \
 		-D HAVE_FIDO_ASSERT_SET_CLIENTDATA \
 		-D HAVE_FIDO_DEV_IS_WINHELLO \
-		$(shell pkg-config --cflags --libs libfido2) $(shell pkg-config --cflags --libs hidapi-libusb) $(shell pkg-config --cflags --libs libusb-1.0) -lbsd \
+		$(shell pkg-config --cflags --libs libfido2) $(shell pkg-config --cflags --libs hidapi-libusb) $(shell pkg-config --cflags --libs libusb-1.0) \
 		yyjson.c \
 		sk-usbhid.c ssh/freezero.c ssh/recallocarray.c skdebug.c \
 		termux.c termux-io.c \
