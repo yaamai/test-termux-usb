@@ -11,7 +11,8 @@ build:
 	patch -p1 -i termux.p
 	# touch xmalloc.h
 	# touch match.h
-	gcc \
+	$(CC) \
+		$(CFLAGS) \
 		-I ssh \
 		-I . \
 		-D ENABLE_SK_INTERNAL \
