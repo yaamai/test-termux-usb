@@ -6,12 +6,10 @@ build:
 	cp ./openssh-portable/openbsd-compat/recallocarray.c ssh/
 	cp ./openssh-portable/openbsd-compat/freezero.c ssh/
 	cp ./openssh-portable/openbsd-compat/explicit_bzero.c ssh/
-	# touch ssh/log.h
 
 	cp ./openssh-portable/sk-usbhid.c .
 	patch -p1 -i termux.p
-	# touch xmalloc.h
-	# touch match.h
+	patch -p1 -i bzero.p
 	$(CC) \
 		$(CFLAGS) \
 		-I ssh \
