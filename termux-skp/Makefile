@@ -16,6 +16,7 @@ build:
 		$(CFLAGS) \
 		-I ssh \
 		-I . \
+		-D __STDC_WANT_LIB_EXT1__ \
 		-D ENABLE_SK_INTERNAL \
 		-D SK_STANDALONE \
 		-D WITH_OPENSSL \
