@@ -16,7 +16,6 @@ build:
 		$(CFLAGS) \
 		-I ssh \
 		-I . \
-		-D __STDC_WANT_LIB_EXT1__ \
 		-D ENABLE_SK_INTERNAL \
 		-D SK_STANDALONE \
 		-D WITH_OPENSSL \
@@ -24,7 +23,7 @@ build:
 		-D HAVE_FIDO_CRED_SET_CLIENTDATA \
 		-D HAVE_FIDO_ASSERT_SET_CLIENTDATA \
 		-D HAVE_FIDO_DEV_IS_WINHELLO \
-		$(shell pkg-config --cflags --libs libfido2) $(shell pkg-config --cflags --libs hidapi-libusb) $(shell pkg-config --cflags --libs libusb-1.0) \
+		$(shell pkg-config --cflags --libs libfido2) $(shell pkg-config --cflags --libs hidapi-libusb) $(shell pkg-config --cflags --libs libusb-1.0) -lbsd \
 		yyjson.c \
 		sk-usbhid.c ssh/freezero.c ssh/recallocarray.c ssh/explicit_bzero.c skdebug.c \
 		termux.c termux-io.c \
