@@ -5,13 +5,15 @@ build:
 	cp ./openssh-portable/ssherr.h ssh/
 	cp ./openssh-portable/openbsd-compat/recallocarray.c ssh/
 	cp ./openssh-portable/openbsd-compat/freezero.c ssh/
+	cp ./openssh-portable/openbsd-compat/explicit_bzero.c ssh/
 	# touch ssh/log.h
 
 	cp ./openssh-portable/sk-usbhid.c .
 	patch -p1 -i termux.p
 	# touch xmalloc.h
 	# touch match.h
-	gcc \
+	$(CC) \
+		$(CFLAGS) \
 		-I ssh \
 		-I . \
 		-D ENABLE_SK_INTERNAL \
@@ -23,7 +25,7 @@ build:
 		-D HAVE_FIDO_DEV_IS_WINHELLO \
 		$(shell pkg-config --cflags --libs libfido2) $(shell pkg-config --cflags --libs hidapi-libusb) $(shell pkg-config --cflags --libs libusb-1.0) \
 		yyjson.c \
-		sk-usbhid.c ssh/freezero.c ssh/recallocarray.c skdebug.c \
+		sk-usbhid.c ssh/freezero.c ssh/recallocarray.c ssh/explicit_bzero.c skdebug.c \
 		termux.c termux-io.c \
 		-shared -o termux-skp.so
 
