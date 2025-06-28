@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <stdio.h>
+#include <strings.h>
 #include "skdebug.h"
 
 int
@@ -11,4 +12,4 @@ void *
 recallocarray(void *ptr, size_t oldnmemb, size_t newnmemb, size_t size);
 void
 freezero(void *ptr, size_t sz);
-
+void explicit_bzero(void *p, size_t n);

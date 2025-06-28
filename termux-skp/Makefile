@@ -21,7 +21,7 @@ build:
 		-D HAVE_FIDO_CRED_SET_CLIENTDATA \
 		-D HAVE_FIDO_ASSERT_SET_CLIENTDATA \
 		-D HAVE_FIDO_DEV_IS_WINHELLO \
-		$(shell pkg-config --cflags --libs libfido2) $(shell pkg-config --cflags --libs hidapi-libusb) $(shell pkg-config --cflags --libs libusb-1.0) -lbsd \
+		$(shell pkg-config --cflags --libs libfido2) $(shell pkg-config --cflags --libs hidapi-libusb) $(shell pkg-config --cflags --libs libusb-1.0) \
 		yyjson.c \
 		sk-usbhid.c ssh/freezero.c ssh/recallocarray.c ssh/explicit_bzero.c skdebug.c \
 		termux.c termux-io.c \
