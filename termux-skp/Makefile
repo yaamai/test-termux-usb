@@ -1,4 +1,8 @@
-build:
+MODULE := termux-skp.so
+
+all: $(MODULE)
+
+$(MODULE):
 	mkdir -p ssh
 	cp ./openssh-portable/sk-api.h ssh/
 	cp ./openssh-portable/misc.h ssh/
@@ -25,5 +29,8 @@ build:
 		yyjson.c \
 		sk-usbhid.c ssh/freezero.c ssh/recallocarray.c ssh/explicit_bzero.c skdebug.c \
 		termux.c termux-io.c \
-		-shared -o termux-skp.so
+		-shared -o $(MODULE)
 
+install:
+	env
+	install -Dm644 $(MODULE) $(PREFIX)/lib/
